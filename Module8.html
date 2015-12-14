@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link type="text/css" rel="stylesheet" href="https://dl.dropboxusercontent.com/u/19515918/stylesheet.css"/>
+<script src="http://code.jquery.com/jquery-1.7.1.min.js" language="javascript"></script> 
+<script src="https://dl.dropboxusercontent.com/u/19515918/script.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.2/jquery-ui.js"></script>
+<title>
+Module8
+</title>
+<script type="text/javascript">
+window.onload = function(){
+    var context;
+    var ui;
+    var meta;
+    context = new webkitAudioContext();
+    meta = new Meta(document.getElementById("FaustMeta"));
+    
+    gainNode = context.createGainNode();
+    gainNode.connect(context.destination); 
+    $('#gain').change(function(){
+        gainNode.gain.value = this.value;
+    });
+    function patcher(signal, destination){
+        signal.disconnect(0);
+        switch(destination){
+            case "Freeverb":
+                signal.connect(freeverby);
+                break;
+            case "output":
+                signal.connect(gainNode);
+                break;
+            case "MultiBF":
+                signal.connect(multibf);
+                break;
+            case "PitchShifter":
+                signal.connect(pitchshift);
+                break;
+            case "ReverbDesigner":
+                signal.connect(reverb);
+                break;
+            case "ZitaReverb":
+                signal.connect(zita);
+                break;
+            case "BandFilter":
+                signal.connect(bandfilter);
+                break;
+            case "Volume":
+                signal.connect(volumey);
+                break;
+            case "Switcher":
+                signal.connect(switchy);
+                break;
+            case "Mixer":
+                signal.connect(mixer);
+                break;
+            case "Matrix":
+                signal.connect(matrix);
+                break;
+            case "Deltap":
+                signal.connect(deltap);
+                break;
+            case "Capture":
+                signal.connect(capturey);
+                break;
+            case "UserDefined":
+                signal.connect(userdefined);
+                break;
+            default:
+                signal.disconnect(0);
+        }
+    }
+
+    //Signal Generators--------------------------------------------------------------
+    $('#myosc').click(function(){
+        $('#FaustUI').append('<table class="ui"><tr><th colspan="2">Oscillator</th></tr><tr><td>Freq</td><td><input id="freq" type="range" min="20" max="2200" step="1" value="440"></td></tr><tr><td>Vol</td><td><input id="vol" type="range" min="0" max="1" step="0.01" value="0.5"></td></tr><tr><td>Wave</td><td><select id="wave"><option value="0" selected>Sine</option><option value="1">Square</option><option value="2">Sawtooth</option><option value="3">Triangle</option></select></td></tr></table>');
+        myosc = context.createOscillator();
+        myvol = context.createGainNode();
+        myosc.connect(myvol);
+        $('#wave').change(function(){
+            var num = parseInt($('#wave').val());
+            myosc.type = num;
+        });
+        $('#freq').change(function(){
+            myosc.frequency.value = this.value;
+        });
+        $('#vol').change(function(){
+            myvol.gain.value = this.value;
+        });
+        myvol.connect(gainNode);
+        var options = $('#sample').html();
+        $('#patchers').append('<div>Oscillator(w)=><select id="myoscpatch" class="patch">'+options+'</select></div>');
+        $('#myoscpatch').change(function(){
+            var out = $('#myoscpatch').val();
+            patcher(myvol, out);
+        });
+        myosc.noteOn(0);
+    });
+    function signalGenerator(name, creator){
+        ui = new JUI(document.getElementById("FaustUI"));
+        objName = new creator(context, ui, meta, 4096);
+        objName.connect(gainNode);
+        var options = $('#sample').html();
+        $('#patchers').append('<div>'+name+'=><select id="'+name+'" class="patch">'+options+'</select></div>');
+        $('#'+name).change(function(){
+            var out =  $('#'+name).val();
+            patcher(objName, out);
+        });
+    }
+    $('#kar').click(function(){
+        signalGenerator("Karplus", create_karplus);
+    });
+    $('#kar32').click(function(){
+        signalGenerator("Karplus32", create_karplus32);
+    });
+    $('#osc').click(function(){
+        signalGenerator("Oscillator", create_osc);
+    });
+    $('#vao').click(function(){
+        signalGenerator("VAOsc", create_virtual_analog_oscillators);
+    });
+    $('#osci').click(function(){
+        signalGenerator("InterpolatedOsc", create_osci);
+    });
+    $('#harp').click(function(){
+        signalGenerator("Harp", create_harpe);
+    });
+    //EFFECTS------------------------------------------------------------------------
+    function effect(name, creator){
+        ui = new JUI(document.getElementById("FaustUI"));
+        objName = new creator(context, ui, meta, 4096);
+        objName.connect(gainNode);
+        var options = $('#sample').html();
+        $('#patchers').append('<div>'+name+'=><select id="'+name+'" class="patch">'+options+'</select></div>');
+        $('.patch:not(#'+name+')').prepend('<option value="'+name+'">'+name+'</option>');
+        $('#'+name).change(function(){
+            var out =  $('#'+name).val();
+            patcher(objName, out);
+        });
+        return objName;
+    }
+    $('#frvb').click(function(){
+        freeverby = effect("Freeverb", create_freeverb);
+    });
+    $('#mbf').click(function(){
+        multibf = effect("MultiBF", create_multibandfilter);
+    });
+    $('#pitch').click(function(){
+        pitchshift = effect("PitchShifter", create_pitch_shifter);
+    });
+    $('#reverb').click(function(){
+        reverb = effect("ReverbDesigner", create_reverb_designer);
+    });
+    $('#zita').click(function(){
+        zita = effect("ZitaReverb", create_zita_rev1);
+    });
+    $('#bf').click(function(){
+        bandfilter = effect("BandFilter", create_bandfilter);
+    });
+    //Utilities-----------------------------------------------------------------
+    $('#volume').click(function(){
+        volumey = effect("Volume", create_volume);
+    });
+    $('#switch').click(function(){
+        switchy = effect("Switcher", create_switcher);
+    });
+    $('#mix').click(function(){
+        mixer = effect("Mixer", create_mixer);
+    });
+    $('#matrix').click(function(){
+        matrix = effect("Matrix", create_matrix);
+    });
+    $('#deltap').click(function(){
+        deltap = effect("Deltap", create_tapiir);
+    });
+    $('#capture').click(function(){
+        capturey = effect("Capture", create_capture);
+        gainNode.connect(capturey);
+    });
+    //Sampler-------------------------------------------------------------------
+    function loadSample(url) {
+        var request = new XMLHttpRequest();
+        request.open("GET", url, true);
+        request.responseType = "arraybuffer";
+        request.onload = function() {
+          source.buffer = context.createBuffer(request.response, false);
+          source.looping = true;
+          source.noteOn(0);
+        }
+        request.send();
+    }
+    $('#play').click(function(){
+        var url = $("#sound").val();
+        var out = $("#sample option:selected").val();
+        source = context.createBufferSource();
+        patcher(source, out);
+        loadSample(url);
+    });
+    $('#stop').click(function(){
+        source.noteOff(0);
+        source.disconnect(0);
+    });
+    $('#connect').click(function(){
+        var out = $("#sample option:selected").val();
+        patcher(source, out);
+    });
+    //DIY-----------------------------------------------------------------------
+    $('#add').click(function(){
+    	var input = $('#mytextarea').val();
+    	var value = $('#code:checked').val();
+    	if(value==="js"){
+    		$('<script>'+input+'</'+'script').appendTo(document.head);
+    	}else{
+    		var type = $('#sort:checked').val();
+    		var start = input.indexOf("window.onload = init;")+21;
+    		var end = input.indexOf("function loadSample(url)");
+    		var guts = input.slice(start,end);
+    		start = guts.indexOf("create_");
+    		end = guts.length;
+    		var creator = guts.slice(start,end);
+    		end = start+creator.indexOf("(");
+    		creator = guts.slice(start,end);
+    		var create = eval(creator);
+    		switch(type){
+    		    case "sig":
+    		        $('#signalg').append('<div id="usrdef">-User Defined</div>');
+    		        $('#usrdef').click(function(){
+    		            signalGenerator("UserDefined",create);
+    		        });
+    		        break;
+    		    case "fx":
+    		        $('#fx').append('<div id="usrdef">-User Defined</div>');
+    		        $('#usrdef').click(function(){
+    		            userdefined = effect("UserDefined",create);
+    		        });
+    		        break;
+    		    case "util":
+    		        $('#sigs').append('<div id="usrdef">-User Defined</div>');
+    		        $('#usrdef').click(function(){
+    		            userdefined = effect("UserDefined",create);
+    		        });
+    		        break;
+    		    default:
+    		    alert('error');
+    		}
+    	}
+    });
+}
+
+</script>
+</head>
+<body>
+<table id="sampler">
+    <tr>
+        <td class="sound">Sample URL:</td>
+        <td> <input type="text" id ="sound" size=20 value="https://dl.dropboxusercontent.com/u/19515918/Braouw.wav"/></td>
+        <td><button type="button" id="play">Play</button></td>
+        <td><button type="button" id="stop">Stop</button></td>
+        <td>
+            Connect to:<select id="sample" class="patch">
+                <option value='output' selected>Output</option>
+                <option value='off'>Disconnect</option>
+            </select>
+        </td>
+        <td><button id="connect">Connect</button></td>
+    </tr>
+</table>
+
+<div id="menu">
+    <h4>Signal Generators</h4>
+    <div id="signalg">
+        <div id="myosc">-Oscillator(Works)</div>
+        <div id="kar">-Karplus</div>
+        <div id="kar32">-Karplus32</div>
+        <div id="harp">-Harp</div>
+        <div class="notice">v Oscs Broken v</div>
+        <div class="broken" id="osc">-Oscillator</div>
+        <div class="broken" id="osci">-Interpolated Osc</div>
+        <div class="broken" id="vao">-VirtualAnalogOsc</div>
+    </div>
+    <h4>Effects</h4>
+    <div id="fx">
+        <div id="frvb">-Freeverb</div>
+        <div id="mbf">-MultiBandFilter</div>
+        <div id="pitch">-Pitch Shifter</div>
+        <div id="reverb">-Reverb Designer</div>
+        <div id="zita">-Zita Reverb</div>
+        <div id="bf">-Band Filter</div>
+    </div>
+    <h4>Utilities</h4>
+    <div id="utils">
+        <div id="capture">-Capture</div>
+        <div id="volume">-Volume</div>
+        <div class="notice">v Need Chnl Fix v</div>
+        <div id="switch">-Switcher</div>
+        <div id="mix">-Mixer</div>
+        <div id="matrix">-Matrix</div>
+        <div id="deltap">-Delay Tap</div>
+    </div>
+    <h4>Patchers</h4>
+    <div id="patchers">
+        
+    </div>
+    <h4>DIY</h4>
+    <div>
+        <form>
+            <input type="radio" id="sort" name="sort" value="sig" checked>Signal Generator<br>
+            <input type="radio" id="sort" name="sort" value="fx">Effect<br>
+            <input type="radio" id="sort" name="sort" value="util">Utility<br>
+            <textarea id="mytextarea" rows="10" cols="25">/*Paste html from faust2webaudio or your own javascript here.*/</textarea><br>
+            <input type="radio" id="code" name="code" value="faust" checked>Faust
+            <input type="radio" id="code" name="code" value="js">JS
+            <input type="button" value="Add" id="add">
+        </form>
+    </div>
+</div>
+
+<div id="FaustMeta"></div>
+<div id="FaustUI"> </div>
+
+<div id="master">
+    <input id="gain" type="range" min="0" max="1" step="0.01" value="0.75">
+    <p>Master</p>
+</div>
+
+
+
+
+</body>
+</html>
